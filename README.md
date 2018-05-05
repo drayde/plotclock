@@ -3,25 +3,24 @@ plotclock
 
 plotclock
 
-a clock that plots time
+a clock that plots time using a UV LED on a glow-in-the-dark surface
 
 What you need
 -------------
-* Lasercutter or 3D Printer
+* Lasercutter
 
 * one Arduino (e.g. uno)
 
-* three RC-Servos Mini (e.g. Tower Pro 9g)
+* two RC-Servos Mini (e.g. Tower Pro 9g)
 
-* one whiteboard marker, dry eerasable (e.g. WB SL DRYWIPE MARKER)
+* UV LED
 
-* Screws, nuts, washers M3 and a tap for cutting M3.
+* glow-in-the-dark sticker
 
-Assembly
---------
+* Screws, nuts, washers M3
 
-See: http://www.thingiverse.com/thing:248009/#instructions
+* hot glue
 
---
 
-this actually is my first git project, so merging, forks etc. is still new to me and could take some time
+This project is based by the awesome Plot Clock by FabLab Nürnberg
+http://wiki.fablab-nuernberg.de/w/Ding:Plotclock

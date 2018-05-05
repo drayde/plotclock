@@ -1,3 +1,4 @@
+
 // Plotclock
 // cc - by Johannes Heberlein 2014
 // v 1.02
@@ -15,30 +16,26 @@
 //       - see http://www.pjrc.com/teensy/td_libs_DS1307RTC.html for how to hook up the real time clock 
 
 // delete or mark the next line as comment if you don't need these
-#define CALIBRATION      // enable calibration mode
+//#define CALIBRATION      // enable calibration mode
 //#define REALTIMECLOCK    // enable real time clock
 
+#define SERVO_DELAY 5
+#define SERVO_DELAY_LONG 100
+
 // When in calibration mode, adjust the following factor until the servos move exactly 90 degrees
-#define SERVOFAKTORLEFT 650
-#define SERVOFAKTORRIGHT 650
+#define SERVOFAKTORLEFT 660
+#define SERVOFAKTORRIGHT 680
 
 // Zero-position of left and right servo
 // When in calibration mode, adjust the NULL-values so that the servo arms are at all times parallel
 // either to the X or Y axis
-#define SERVOLEFTNULL 2250
-#define SERVORIGHTNULL 920
+#define SERVOLEFTNULL 2000
+#define SERVORIGHTNULL 1100
 
-#define SERVOPINLIFT  2
 #define SERVOPINLEFT  3
-#define SERVOPINRIGHT 4
+#define SERVOPINRIGHT 2
 
-// lift positions of lifting servo
-#define LIFT0 1080 // on drawing surface
-#define LIFT1 925  // between numbers
-#define LIFT2 725  // going towards sweeper
-
-// speed of liftimg arm, higher is slower
-#define LIFTSPEED 1500
+#define LED_PIN 5
 
 // length of arms
 #define L1 35
@@ -51,7 +48,7 @@
 #define O2X 47
 #define O2Y -25
 
-#include <Time.h> // see http://playground.arduino.cc/Code/time 
+#include <TimeLib.h> // see http://playground.arduino.cc/Code/time 
 #include <Servo.h>
 
 #ifdef REALTIMECLOCK
@@ -64,14 +61,18 @@
   #include <DS1307RTC.h> // see http://playground.arduino.cc/Code/time    
 #endif
 
-int servoLift = 1500;
 
-Servo servo1;  // 
-Servo servo2;  // 
-Servo servo3;  // 
+Servo servoLeft;  // 
+Servo servoRight;  // 
 
 volatile double lastX = 75;
 volatile double lastY = 47.5;
+
+const int bottom = 15;
+const double top = 45;
+const double origSize = 20;
+const double scale = (top-bottom)/origSize;
+const int offsetX = -9;
 
 int last_min = 0;
 
@@ -99,18 +100,19 @@ void setup()
       Serial.println("DS1307 read error!  Please check the circuitry.");
     } 
     // Set current time only the first to values, hh,mm are needed
-    setTime(19,38,0,0,0,0);
+    setTime(16,59,0,0,0,0);
   }
 #else  
   // Set current time only the first to values, hh,mm are needed
-  setTime(19,38,0,0,0,0);
+  setTime(16,59,0,0,0,0);
 #endif
 
-  drawTo(75.2, 47);
-  lift(0);
-  servo1.attach(SERVOPINLIFT);  //  lifting servo
-  servo2.attach(SERVOPINLEFT);  //  left servo
-  servo3.attach(SERVOPINRIGHT);  //  right servo
+  home();
+  servoLeft.attach(SERVOPINLEFT);  //  left servo
+  servoRight.attach(SERVOPINRIGHT);  //  right servo
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW); 
+
   delay(1000);
 
 } 
@@ -132,43 +134,48 @@ void loop()
   int i = 0;
   if (last_min != minute()) {
 
-    if (!servo1.attached()) servo1.attach(SERVOPINLIFT);
-    if (!servo2.attached()) servo2.attach(SERVOPINLEFT);
-    if (!servo3.attached()) servo3.attach(SERVOPINRIGHT);
+    if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
+    if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
 
-    lift(0);
-
+    lift(1);    
+    
     hour();
     while ((i+1)*10 <= hour())
     {
       i++;
     }
 
-    number(3, 3, 111, 1);
-    number(5, 25, i, 0.9);
-    number(19, 25, (hour()-i*10), 0.9);
-    number(28, 25, 11, 0.9);
+    lift(1);
+    number(offsetX+1, bottom, i, scale);
+    number(offsetX+19, bottom, (hour()-i*10), scale);
+    number(offsetX+35, bottom, 11, scale);
 
     i=0;
     while ((i+1)*10 <= minute())
     {
       i++;
     }
-    number(34, 25, i, 0.9);
-    number(48, 25, (minute()-i*10), 0.9);
-    lift(2);
-    drawTo(74.2, 47.5);
-    lift(1);
+    number(offsetX+44, bottom, i, scale);
+    number(offsetX+62, bottom, (minute()-i*10), scale);
+
+    home();
     last_min = minute();
 
-    servo1.detach();
-    servo2.detach();
-    servo3.detach();
+    servoLeft.detach();
+    servoRight.detach();
   }
 
 #endif
 
 } 
+
+void home()
+{
+    lift(1);
+    //drawTo(74.2, 47.5);
+    drawTo(55, -4); // HOME
+  
+}
 
 // Writing numeral with bx by being the bottom left originpoint. Scale 1 equals a 20 mm high font.
 // The structure follows this principle: move to first startpoint of the numeral, lift down, draw numeral, lift up
@@ -250,37 +257,6 @@ void number(float bx, float by, int num, float scale) {
     drawTo(bx + 5 * scale, by + 0);
     lift(1);
     break;
-
-  case 111:
-
-    lift(0);
-    drawTo(70, 46);
-    drawTo(65, 43);
-
-    drawTo(65, 49);
-    drawTo(5, 49);
-    drawTo(5, 45);
-    drawTo(65, 45);
-    drawTo(65, 40);
-
-    drawTo(5, 40);
-    drawTo(5, 35);
-    drawTo(65, 35);
-    drawTo(65, 30);
-
-    drawTo(5, 30);
-    drawTo(5, 25);
-    drawTo(65, 25);
-    drawTo(65, 20);
-
-    drawTo(5, 20);
-    drawTo(60, 44);
-
-    drawTo(75.2, 47);
-    lift(2);
-
-    break;
-
   case 11:
     drawTo(bx + 5 * scale, by + 15 * scale);
     lift(0);
@@ -299,68 +275,17 @@ void number(float bx, float by, int num, float scale) {
 
 void lift(char lift) {
   switch (lift) {
-    // room to optimize  !
 
-  case 0: //850
-
-      if (servoLift >= LIFT0) {
-      while (servoLift >= LIFT0) 
-      {
-        servoLift--;
-        servo1.writeMicroseconds(servoLift);				
-        delayMicroseconds(LIFTSPEED);
-      }
-    } 
-    else {
-      while (servoLift <= LIFT0) {
-        servoLift++;
-        servo1.writeMicroseconds(servoLift);
-        delayMicroseconds(LIFTSPEED);
-
-      }
-
-    }
-
+  case 0: 
+    delay(SERVO_DELAY_LONG);
+    digitalWrite(LED_PIN, HIGH); 
     break;
 
-  case 1: //150
-
-    if (servoLift >= LIFT1) {
-      while (servoLift >= LIFT1) {
-        servoLift--;
-        servo1.writeMicroseconds(servoLift);
-        delayMicroseconds(LIFTSPEED);
-
-      }
-    } 
-    else {
-      while (servoLift <= LIFT1) {
-        servoLift++;
-        servo1.writeMicroseconds(servoLift);
-        delayMicroseconds(LIFTSPEED);
-      }
-
-    }
-
+  case 1: 
+    delay(SERVO_DELAY_LONG);
+    digitalWrite(LED_PIN, LOW); 
     break;
 
-  case 2:
-
-    if (servoLift >= LIFT2) {
-      while (servoLift >= LIFT2) {
-        servoLift--;
-        servo1.writeMicroseconds(servoLift);
-        delayMicroseconds(LIFTSPEED);
-      }
-    } 
-    else {
-      while (servoLift <= LIFT2) {
-        servoLift++;
-        servo1.writeMicroseconds(servoLift);				
-        delayMicroseconds(LIFTSPEED);
-      }
-    }
-    break;
   }
 }
 
@@ -406,7 +331,7 @@ void drawTo(double pX, double pY) {
   for (i = 0; i <= c; i++) {
     // draw line point by point
     set_XY(lastX + (i * dx / c), lastY + (i * dy / c));
-
+    delay(SERVO_DELAY);
   }
 
   lastX = pX;
@@ -433,7 +358,7 @@ void set_XY(double Tx, double Ty)
   a1 = atan2(dy, dx); //
   a2 = return_angle(L1, L2, c);
 
-  servo2.writeMicroseconds(floor(((a2 + a1 - M_PI) * SERVOFAKTORLEFT) + SERVOLEFTNULL));
+  servoLeft.writeMicroseconds(floor(((a2 + a1 - M_PI) * SERVOFAKTORLEFT) + SERVOLEFTNULL));
 
   // calculate joinr arm point for triangle of the right servo arm
   a2 = return_angle(L2, L1, c);
@@ -448,7 +373,7 @@ void set_XY(double Tx, double Ty)
   a1 = atan2(dy, dx);
   a2 = return_angle(L1, (L2 - L3), c);
 
-  servo3.writeMicroseconds(floor(((a1 - a2) * SERVOFAKTORRIGHT) + SERVORIGHTNULL));
+  servoRight.writeMicroseconds(floor(((a1 - a2) * SERVOFAKTORRIGHT) + SERVORIGHTNULL));
 
 }
 
