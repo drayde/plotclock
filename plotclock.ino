@@ -5,32 +5,33 @@
 // thingiverse.com/joo   wiki.fablab-nuernberg.de
 // units: mm; microseconds; radians
 // origin: bottom left of drawing surface
-// time library see http://playground.arduino.cc/Code/time 
-// RTC  library see http://playground.arduino.cc/Code/time 
+
+// modifiactions for UV plot clock by Andreas Kahler, FabLab München
+
+// time library see https://github.com/PaulStoffregen/Time
+// SerialUI v2 see https://github.com/psychogenic/SerialUI
+// RTC  library see https://github.com/PaulStoffregen/Time 
 //               or http://www.pjrc.com/teensy/td_libs_DS1307RTC.html  
-// Change log:
-// 1.01  Release by joo at https://github.com/9a/plotclock
-// 1.02  Additional features implemented by Dave:
-//       - added ability to calibrate servofaktor seperately for left and right servos
-//       - added code to support DS1307, DS1337 and DS3231 real time clock chips
-//       - see http://www.pjrc.com/teensy/td_libs_DS1307RTC.html for how to hook up the real time clock 
+
 
 // delete or mark the next line as comment if you don't need these
-//#define CALIBRATION      // enable calibration mode
 //#define REALTIMECLOCK    // enable real time clock
 
-#define SERVO_DELAY 5
-#define SERVO_DELAY_LONG 100
+
 
 // When in calibration mode, adjust the following factor until the servos move exactly 90 degrees
-#define SERVOFAKTORLEFT 660
-#define SERVOFAKTORRIGHT 680
+int SERVOFAKTORLEFT;
+int SERVOFAKTORRIGHT;
 
 // Zero-position of left and right servo
 // When in calibration mode, adjust the NULL-values so that the servo arms are at all times parallel
 // either to the X or Y axis
-#define SERVOLEFTNULL 2000
-#define SERVORIGHTNULL 1100
+int SERVOLEFTNULL;
+int SERVORIGHTNULL;
+
+int SERVO_DELAY;
+int SERVO_DELAY_LONG;
+
 
 #define SERVOPINLEFT  3
 #define SERVOPINRIGHT 2
@@ -48,8 +49,10 @@
 #define O2X 47
 #define O2Y -25
 
-#include <TimeLib.h> // see http://playground.arduino.cc/Code/time 
+#include <TimeLib.h> 
 #include <Servo.h>
+#include <SerialUI.h>
+#include <EEPROM.h>
 
 #ifdef REALTIMECLOCK
 // for instructions on how to hook up a real time clock,
@@ -68,7 +71,7 @@ Servo servoRight;  //
 volatile double lastX = 75;
 volatile double lastY = 47.5;
 
-const int bottom = 15;
+const int bottom = 19;
 const double top = 45;
 const double origSize = 20;
 const double scale = (top-bottom)/origSize;
@@ -76,8 +79,15 @@ const int offsetX = -9;
 
 int last_min = 0;
 
+
+// our global-scope SerialUI object
+SUI::SerialUI mySUI;
+
+
 void setup() 
 { 
+  readParamsFromEeprom();
+  
 #ifdef REALTIMECLOCK
   Serial.begin(9600);
   //while (!Serial) { ; } // wait for serial port to connect. Needed for Leonardo only
@@ -107,6 +117,9 @@ void setup()
   setTime(16,59,0,0,0,0);
 #endif
 
+  setupMenu();
+
+  
   home();
   servoLeft.attach(SERVOPINLEFT);  //  left servo
   servoRight.attach(SERVOPINRIGHT);  //  right servo
@@ -120,20 +133,18 @@ void setup()
 void loop() 
 { 
 
-#ifdef CALIBRATION
+  if (mySUI.checkForUser(150))
+  {
+    mySUI.enter();
+    while (mySUI.userPresent())
+    {
+      mySUI.handleRequests();
+    }    
+  }  
 
-  // Servohorns will have 90° between movements, parallel to x and y axis
-  drawTo(-3, 29.2);
-  delay(500);
-  drawTo(74.1, 28);
-  delay(500);
-
-#else 
-
-
-  int i = 0;
-  if (last_min != minute()) {
-
+  int i = 0, j = 0;
+  if (last_min != minute()) 
+  {
     if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
     if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
 
@@ -145,18 +156,13 @@ void loop()
       i++;
     }
 
-    lift(1);
-    number(offsetX+1, bottom, i, scale);
-    number(offsetX+19, bottom, (hour()-i*10), scale);
-    number(offsetX+35, bottom, 11, scale);
-
-    i=0;
-    while ((i+1)*10 <= minute())
+    j=0;
+    while ((j+1)*10 <= minute())
     {
-      i++;
+      j++;
     }
-    number(offsetX+44, bottom, i, scale);
-    number(offsetX+62, bottom, (minute()-i*10), scale);
+
+    writeTime(i, (hour()-i*10), j, (minute()-j*10));
 
     home();
     last_min = minute();
@@ -164,19 +170,58 @@ void loop()
     servoLeft.detach();
     servoRight.detach();
   }
-
-#endif
-
 } 
+
+void writeTime(int d1, int d2, int d3, int d4)
+{
+    number(offsetX+1, bottom, d1, scale);
+    number(offsetX+19, bottom, d2, scale);
+    
+    number(offsetX+35, bottom, 11, scale);
+
+    number(offsetX+44, bottom, d3, scale);
+    number(offsetX+62, bottom, d4, scale);
+}
 
 void home()
 {
     lift(1);
     //drawTo(74.2, 47.5);
     drawTo(55, -4); // HOME
-  
 }
 
+void testServo()
+{
+  lift(1);
+  if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
+  if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
+
+  for (int i=0; i<=3; ++i)
+  {
+    // Servohorns will have 90° between movements, parallel to x and y axis
+    drawTo(-3, 29.2);
+    delay(500);
+    drawTo(74.1, 28);
+    delay(500);  
+  }
+  
+  servoLeft.detach();
+  servoRight.detach();
+}
+
+void write0000()
+{
+  if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
+  if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
+
+  writeTime(0,0,0,0);
+
+  home();
+
+  servoLeft.detach();
+  servoRight.detach();
+}
+    
 // Writing numeral with bx by being the bottom left originpoint. Scale 1 equals a 20 mm high font.
 // The structure follows this principle: move to first startpoint of the numeral, lift down, draw numeral, lift up
 void number(float bx, float by, int num, float scale) {
@@ -374,10 +419,124 @@ void set_XY(double Tx, double Ty)
   a2 = return_angle(L1, (L2 - L3), c);
 
   servoRight.writeMicroseconds(floor(((a1 - a2) * SERVOFAKTORRIGHT) + SERVORIGHTNULL));
-
 }
 
 
+void setupMenu()
+{
+  mySUI.setGreeting(F("+++ Welcome to Plot Clock +++\r\nEnter ? for help."));
+  mySUI.begin(115200); 
+  mySUI.setTimeout(20000);      // timeout for reads (in ms), same as for Serial.
+  mySUI.setMaxIdleMs(30000);    // timeout for user (in ms)  
+  
+  SUI::Menu * mainMenu = mySUI.topLevelMenu();
+  mainMenu->setName(SUI_STR("Main Menu"));
+  mainMenu->addCommand(SUI_STR("set"), setTheTime, SUI_STR("sets the clock's time"));
+  mainMenu->addCommand(SUI_STR("t"), write0000, SUI_STR("test - write 00:00"));
+  mainMenu->addCommand(SUI_STR("c"), testServo, SUI_STR("calibration movement"));
+  mainMenu->addCommand(SUI_STR("i"), showInfo, SUI_STR("info - show current settings"));
+  mainMenu->addCommand(SUI_STR("l0"), left0, SUI_STR("set left zero"));
+  mainMenu->addCommand(SUI_STR("lf"), leftF, SUI_STR("set left factor"));
+  mainMenu->addCommand(SUI_STR("r0"), right0, SUI_STR("set right zero"));
+  mainMenu->addCommand(SUI_STR("rf"), rightF, SUI_STR("set right factor"));
+  mainMenu->addCommand(SUI_STR("save"), saveParamsToEeprom, SUI_STR("save configuration to EEPROM"));
+  mainMenu->addCommand(SUI_STR("read"), readParamsFromEeprom, SUI_STR("read configuration from EEPROM"));  
+}
 
+void left0(){ setVar(&SERVOLEFTNULL); }
+void leftF(){ setVar(&SERVOFAKTORLEFT); }
+void right0(){ setVar(&SERVORIGHTNULL); }
+void rightF(){ setVar(&SERVOFAKTORRIGHT); }
 
+void setVar(int* var)
+{
+  mySUI.print(F("OLD VALUE: "));
+  mySUI.println(*var);
+  mySUI.showEnterNumericDataPrompt();
+  int val = mySUI.parseInt();
+  mySUI.println(val);
+
+  if (val >= 0)
+  {      
+    *var = val;
+    mySUI.returnOK();
+    mySUI.print(F("NEW VALUE: "));
+    mySUI.println(*var);
+    return;
+  }
+  mySUI.returnError();  
+}
+
+void showInfo()
+{
+  mySUI.print(F("SERVOFAKTORLEFT:"));
+  mySUI.println(SERVOFAKTORLEFT);
+  mySUI.print(F("SERVOFAKTORRIGHT:"));
+  mySUI.println(SERVOFAKTORRIGHT);
+  mySUI.print(F("SERVOLEFTNULL:"));
+  mySUI.println(SERVOLEFTNULL);
+  mySUI.print(F("SERVORIGHTNULL:"));
+  mySUI.println(SERVORIGHTNULL);
+  mySUI.print(F("SERVO_DELAY:"));
+  mySUI.println(SERVO_DELAY);
+  mySUI.print(F("SERVO_DELAY_LONG:"));
+  mySUI.println(SERVO_DELAY_LONG);
+}
+
+void setTheTime()
+{
+  mySUI.print(F("Enter hours: "));
+  mySUI.showEnterNumericDataPrompt();
+  int hours = mySUI.parseInt();
+  mySUI.println(hours);
+
+  mySUI.print(F("Enter minutes: "));
+  mySUI.showEnterNumericDataPrompt();
+  int minutes = mySUI.parseInt();
+  mySUI.println(minutes);
+
+  if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59)
+  {      
+    setTime(hours,minutes,0, 0, 0, 0);
+    mySUI.returnOK();
+    return;
+  }
+  mySUI.returnError();
+}
+
+void saveParamsToEeprom()
+{
+  int adr = 0;
+  writeToEeprom(adr, SERVOLEFTNULL);
+  writeToEeprom(adr, SERVOFAKTORLEFT);
+  writeToEeprom(adr, SERVORIGHTNULL);
+  writeToEeprom(adr, SERVOFAKTORRIGHT);
+  writeToEeprom(adr, SERVO_DELAY);
+  writeToEeprom(adr, SERVO_DELAY_LONG);
+}
+
+void readParamsFromEeprom()
+{
+  int adr = 0;
+  readFromEeprom(adr, SERVOLEFTNULL, 1950);
+  readFromEeprom(adr, SERVOFAKTORLEFT, 660);
+  readFromEeprom(adr, SERVORIGHTNULL, 1100);
+  readFromEeprom(adr, SERVOFAKTORRIGHT, 700);
+  readFromEeprom(adr, SERVO_DELAY, 5);
+  readFromEeprom(adr, SERVO_DELAY_LONG, 100);
+}
+
+void readFromEeprom(int& adr, int& param, int defaultValue)
+{
+  int val;
+  EEPROM.get(adr, val);
+  param = (val >= 0) ? val : defaultValue;
+  adr += sizeof(int);
+}
+
+void writeToEeprom(int& adr, int param)
+{
+  EEPROM.put(adr, param);
+  adr += sizeof(int);
+}
 
