@@ -15,7 +15,7 @@
 
 
 // delete or mark the next line as comment if you don't need these
-//#define REALTIMECLOCK    // enable real time clock
+// #define REALTIMECLOCK    // enable real time clock
 
 
 
@@ -58,7 +58,6 @@ int SERVO_DELAY_LONG;
 // for instructions on how to hook up a real time clock,
 // see here -> http://www.pjrc.com/teensy/td_libs_DS1307RTC.html
 // DS1307RTC works with the DS1307, DS1337 and DS3231 real time clock chips.
-// Please run the SetTime example to initialize the time on new RTC chips and begin running.
 
   #include <Wire.h>
   #include <DS1307RTC.h> // see http://playground.arduino.cc/Code/time    
@@ -89,29 +88,8 @@ void setup()
   readParamsFromEeprom();
   
 #ifdef REALTIMECLOCK
-  Serial.begin(9600);
-  //while (!Serial) { ; } // wait for serial port to connect. Needed for Leonardo only
-
-  // Set current time only the first to values, hh,mm are needed  
-  tmElements_t tm;
-  if (RTC.read(tm)) 
-  {
-    setTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year);
-    Serial.println("DS1307 time is set OK.");
-  } 
-  else 
-  {
-    if (RTC.chipPresent())
-    {
-      Serial.println("DS1307 is stopped.  Please run the SetTime example to initialize the time and begin running.");
-    } 
-    else 
-    {
-      Serial.println("DS1307 read error!  Please check the circuitry.");
-    } 
-    // Set current time only the first to values, hh,mm are needed
-    setTime(16,59,0,0,0,0);
-  }
+  getTimeFromRTC();
+  setSyncProvider(RTC.get);
 #else  
   // Set current time only the first to values, hh,mm are needed
   setTime(16,59,0,0,0,0);
@@ -441,6 +419,9 @@ void setupMenu()
   mainMenu->addCommand(SUI_STR("rf"), rightF, SUI_STR("set right factor"));
   mainMenu->addCommand(SUI_STR("save"), saveParamsToEeprom, SUI_STR("save configuration to EEPROM"));
   mainMenu->addCommand(SUI_STR("read"), readParamsFromEeprom, SUI_STR("read configuration from EEPROM"));  
+#ifdef REALTIMECLOCK
+  mainMenu->addCommand(SUI_STR("rtc"), getTimeFromRTCMenu, SUI_STR("get time from RTC"));  
+#endif  
 }
 
 void left0(){ setVar(&SERVOLEFTNULL); }
@@ -499,6 +480,10 @@ void setTheTime()
   {      
     setTime(hours,minutes,0, 0, 0, 0);
     mySUI.returnOK();
+
+#ifdef REALTIMECLOCK
+    copyTimeToRTC();
+#endif
     return;
   }
   mySUI.returnError();
@@ -540,3 +525,40 @@ void writeToEeprom(int& adr, int param)
   adr += sizeof(int);
 }
 
+#ifdef REALTIMECLOCK
+
+bool getTimeFromRTC()
+{
+  tmElements_t tm;
+  if (RTC.read(tm)) 
+  {
+    setTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year);
+    return true;
+  } 
+  return false;
+}
+
+void getTimeFromRTCMenu()
+{
+  if (getTimeFromRTC()) 
+  {
+    mySUI.println(F("DS1307 time is set OK."));
+    return;
+  } 
+
+  if (RTC.chipPresent())
+  {
+    mySUI.println(F("DS1307 must be initialized. Set time first!"));
+  } 
+  else 
+  {
+    mySUI.println(F("DS1307 read error!  Please check the circuitry."));
+  } 
+}
+
+void copyTimeToRTC()
+{  
+  RTC.set(now());
+}
+
+#endif 
