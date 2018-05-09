@@ -17,7 +17,8 @@
 // delete or mark the next line as comment if you don't need these
 #define REALTIMECLOCK    // enable real time clock
 
-
+// uncomment if you want to provide new values from code
+//#define DONT_USE_EEPROM_VALUES 1
 
 // When in calibration mode, adjust the following factor until the servos move exactly 90 degrees
 int SERVOFAKTORLEFT;
@@ -38,13 +39,13 @@ int SERVO_DELAY_LONG;
 
 #define LED_PIN 5
 
-// length of arms
-#define L1 35
+// length of arms (in mm)
+#define L1 35.0
 #define L2 55.1
-#define L3 13.2
+#define L3 14.0
 
-// origin points of left and right servo 
-#define O1X 22
+// origin points of left and right servo (in mm)
+#define O1X 25
 #define O1Y -25
 #define O2X 47
 #define O2Y -25
@@ -70,7 +71,7 @@ Servo servoRight;  //
 volatile double lastX = 75;
 volatile double lastY = 47.5;
 
-int offsetX = 11;
+int offsetX;
 
 const int bottom = 19;
 const double top = 45;
@@ -86,9 +87,15 @@ SUI::SerialUI mySUI;
 
 void setup() 
 { 
+  delay(1000);
+
+  setupMenu();
+  mySUI.println(F("Init"));
+  mySUI.println(F("Reading params from EEPROM..."));
   readParamsFromEeprom();
   
 #ifdef REALTIMECLOCK
+  mySUI.println(F("Getting time from RTC..."));
   getTimeFromRTC();
   setSyncProvider(RTC.get);
 #else  
@@ -96,17 +103,14 @@ void setup()
   setTime(16,59,0,0,0,0);
 #endif
 
-  setupMenu();
 
-  
+  mySUI.println(F("Init done."));
+   
   home();
   servoLeft.attach(SERVOPINLEFT);  //  left servo
   servoRight.attach(SERVOPINRIGHT);  //  right servo
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW); 
-
-  delay(1000);
-
 } 
 
 void loop() 
@@ -129,7 +133,6 @@ void loop()
 
     setLed(false);    
     
-    hour();
     while ((i+1)*10 <= hour())
     {
       i++;
@@ -153,13 +156,13 @@ void loop()
 
 void writeTime(int d1, int d2, int d3, int d4)
 {
-    number(offsetX-20+1, bottom, d1, scale);
-    number(offsetX-20+19, bottom, d2, scale);
+    number(offsetX-19, bottom, d1, scale);
+    number(offsetX+1, bottom, d2, scale);
     
-    number(offsetX-20+35, bottom, 11, scale);
+    number(offsetX+15, bottom, 11, scale);
 
-    number(offsetX-20+44, bottom, d3, scale);
-    number(offsetX-20+62, bottom, d4, scale);
+    number(offsetX+24, bottom, d3, scale);
+    number(offsetX+42, bottom, d4, scale);
 }
 
 void home()
@@ -188,12 +191,12 @@ void testServo()
   servoRight.detach();
 }
 
-void write0000()
+void writeDigits(int d1, int d2, int d3, int d4)
 {
   if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
   if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
 
-  writeTime(0,0,0,0);
+  writeTime(d1,d2,d3,d4);
 
   home();
 
@@ -208,13 +211,12 @@ void number(float bx, float by, int num, float scale) {
   switch (num) {
 
   case 0:
-    drawTo(bx + 12 * scale, by + 6 * scale);
+    drawTo(bx + 6 * scale, by + 0 * scale);
     setLed(true);
-    bogenGZS(bx + 7 * scale, by + 10 * scale, 10 * scale, -0.8, 6.7, 0.5);
+    bogenGZS(bx + 6 * scale, by + 10 * scale, 10 * scale, -0.5*M_PI, 1.5*M_PI+0.1, 0.5);
     setLed(false);
     break;
   case 1:
-
     drawTo(bx + 3 * scale, by + 15 * scale);
     setLed(true);
     drawTo(bx + 10 * scale, by + 20 * scale);
@@ -247,15 +249,15 @@ void number(float bx, float by, int num, float scale) {
   case 5:
     drawTo(bx + 2 * scale, by + 5 * scale);
     setLed(true);
-    bogenGZS(bx + 5 * scale, by + 6 * scale, 6 * scale, -2.5, 2, 1);
-    drawTo(bx + 5 * scale, by + 20 * scale);
+    bogenGZS(bx + 5 * scale, by + 6 * scale, 6 * scale, -2.5, 2.2, 1);
+    drawTo(bx + 1 * scale, by + 20 * scale);
     drawTo(bx + 12 * scale, by + 20 * scale);
     setLed(false);
     break;
   case 6:
-    drawTo(bx + 2 * scale, by + 10 * scale);
+    drawTo(bx + 5 * scale, by + 10 * scale);
     setLed(true);
-    bogenUZS(bx + 7 * scale, by + 6 * scale, 6 * scale, 2, -4.4, 1);
+    bogenUZS(bx + 7 * scale, by + 5 * scale, 5.5 * scale, 1.5, -3.6, 1);
     drawTo(bx + 11 * scale, by + 20 * scale);
     setLed(false);
     break;
@@ -304,7 +306,7 @@ void setLed(bool isOn)
 }
 
 
-void bogenUZS(float bx, float by, float radius, int start, int ende, float sqee) {
+void bogenUZS(float bx, float by, float radius, float start, float ende, float sqee) {
   float inkr = -0.05;
   float count = 0;
 
@@ -317,7 +319,7 @@ void bogenUZS(float bx, float by, float radius, int start, int ende, float sqee)
 
 }
 
-void bogenGZS(float bx, float by, float radius, int start, int ende, float sqee) {
+void bogenGZS(float bx, float by, float radius, float start, float ende, float sqee) {
   float inkr = 0.05;
   float count = 0;
 
@@ -367,7 +369,7 @@ void set_XY(double Tx, double Ty)
   dx = Tx - O1X;
   dy = Ty - O1Y;
 
-  // polar lemgth (c) and angle (a1)
+  // polar length (c) and angle (a1)
   c = sqrt(dx * dx + dy * dy); // 
   a1 = atan2(dy, dx); //
   a2 = return_angle(L1, L2, c);
@@ -390,6 +392,76 @@ void set_XY(double Tx, double Ty)
   servoRight.writeMicroseconds(floor(((a1 - a2) * SERVOFAKTORRIGHT) + SERVORIGHTNULL));
 }
 
+void wizard()
+{
+  setLed(false);
+  if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
+  if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
+
+  // left servo horizontal:   angle = 0
+  // left servo vertical:     angle = - pi/2
+  // right servo horizontal:  angle = 0
+  // right servo vertical:    angle = pi/2
+
+  const double pi2 = M_PI/2.0;
+  const double pi4 = M_PI/4.0;
+  
+  mySUI.println(F("Welcome to the servo calibration wizard!"));
+  mySUI.println(F("The goal is to make the servos move to a perfectly horizontal and vertical position."));
+  mySUI.println(F("We start with the LEFT servo."));
+  
+  mySUI.println(F("Adjusting value of SERVOLEFTNULL"));
+  setWizardVar(&SERVOLEFTNULL, 0, pi4);    
+  mySUI.println(F("Adjusting value of SERVOFAKTORLEFT"));
+  setWizardVar(&SERVOFAKTORLEFT, -pi2, pi4);    
+
+  mySUI.println(F("Done with left servo. We continue with the RIGHT servo."));
+  mySUI.println(F("Adjusting value of SERVORIGHTNULL"));
+  setWizardVar(&SERVORIGHTNULL, -pi2, 0);    
+  mySUI.println(F("Adjusting value of SERVOFAKTORRIGHT"));
+  setWizardVar(&SERVOFAKTORRIGHT, -pi4, pi2);    
+
+  servoLeft.detach();
+  servoRight.detach();
+
+  mySUI.println(F("Finished wizard."));
+  mySUI.println(F("If you are happy with the results, don't forget to save the configuration to the EEPROM."));
+}
+
+
+void setWizardVar(int* var, double angleLeft, double angleRight)
+{
+  while(true)
+  {
+    servoLeft.writeMicroseconds(floor(angleLeft * SERVOFAKTORLEFT) + SERVOLEFTNULL);
+    servoRight.writeMicroseconds(floor(angleRight * SERVOFAKTORRIGHT) + SERVORIGHTNULL);
+    
+    mySUI.println(F("Enter new value or enter 0 to proceed"));
+    mySUI.print(F("current value: "));
+    mySUI.println(*var);
+    mySUI.showEnterNumericDataPrompt();
+    int val = mySUI.parseInt();
+    mySUI.println(val);
+  
+    if (val > 0)
+    {      
+      *var = val;
+      mySUI.returnOK();
+      mySUI.print(F("new value: "));
+      mySUI.println(*var);
+    }
+    else if (val == 0)
+    {
+      mySUI.println();
+      mySUI.println();
+      return;
+    }
+    else
+    {
+      mySUI.returnError();  
+    }
+  }
+}
 
 void setupMenu()
 {
@@ -401,9 +473,13 @@ void setupMenu()
   SUI::Menu * mainMenu = mySUI.topLevelMenu();
   mainMenu->setName(SUI_STR("Main Menu"));
   mainMenu->addCommand(SUI_STR("set"), setTheTime, SUI_STR("sets the clock's time"));
-  mainMenu->addCommand(SUI_STR("show"), getTheTime, SUI_STR("show the clock's time"));
-  mainMenu->addCommand(SUI_STR("t"), write0000, SUI_STR("test - write 00:00"));
-  mainMenu->addCommand(SUI_STR("c"), testServo, SUI_STR("calibration movement"));
+  mainMenu->addCommand(SUI_STR("show"), showTime, SUI_STR("show the clock's time"));
+  mainMenu->addCommand(SUI_STR("t0"), write0000, SUI_STR("test - write 00:00"));
+  mainMenu->addCommand(SUI_STR("t1"), write1234, SUI_STR("test - write 12:34"));
+  mainMenu->addCommand(SUI_STR("t2"), write5679, SUI_STR("test - write 56:79"));
+  mainMenu->addCommand(SUI_STR("t8"), write8888, SUI_STR("test - write 88:88"));
+  mainMenu->addCommand(SUI_STR("c"), testServo, SUI_STR("servo calibration movement"));
+  mainMenu->addCommand(SUI_STR("wiz"), wizard, SUI_STR("servo calibration wizard"));
   mainMenu->addCommand(SUI_STR("i"), showInfo, SUI_STR("info - show current settings"));
   mainMenu->addCommand(SUI_STR("l0"), left0, SUI_STR("set left zero"));
   mainMenu->addCommand(SUI_STR("lf"), leftF, SUI_STR("set left factor"));
@@ -413,7 +489,7 @@ void setupMenu()
   mainMenu->addCommand(SUI_STR("save"), saveParamsToEeprom, SUI_STR("save configuration to EEPROM"));
   mainMenu->addCommand(SUI_STR("read"), readParamsFromEeprom, SUI_STR("read configuration from EEPROM"));  
 #ifdef REALTIMECLOCK
-  mainMenu->addCommand(SUI_STR("rtc"), getTimeFromRTCMenu, SUI_STR("get time from RTC"));  
+  mainMenu->addCommand(SUI_STR("rtc"), getTimeFromRTC, SUI_STR("get time from RTC"));  
 #endif  
 }
 
@@ -422,6 +498,11 @@ void leftF(){ setVar(&SERVOFAKTORLEFT); }
 void right0(){ setVar(&SERVORIGHTNULL); }
 void rightF(){ setVar(&SERVOFAKTORRIGHT); }
 void offset(){ setVar(&offsetX); }
+
+void write0000() { writeDigits(0,0,0,0); }
+void write1234() { writeDigits(1,2,3,4); }
+void write5679() { writeDigits(5,6,7,9); }
+void write8888() { writeDigits(8,8,8,8); }
 
 void setVar(int* var)
 {
@@ -485,7 +566,7 @@ void setTheTime()
   mySUI.returnError();
 }
 
-void getTheTime()
+void showTime()
 {
   mySUI.print(F("hours: "));
   mySUI.println(hour());
@@ -514,14 +595,18 @@ void readParamsFromEeprom()
   readFromEeprom(adr, SERVOFAKTORRIGHT, 700);
   readFromEeprom(adr, SERVO_DELAY, 5);
   readFromEeprom(adr, SERVO_DELAY_LONG, 100);
-  readFromEeprom(adr, offsetX, 11);
+  readFromEeprom(adr, offsetX, 19);
 }
 
 void readFromEeprom(int& adr, int& param, int defaultValue)
 {
+#ifdef DONT_USE_EEPROM_VALUES
+  param = defaultValue;
+#else    
   int val;
   EEPROM.get(adr, val);
   param = (val >= 0) ? val : defaultValue;
+#endif  
   adr += sizeof(int);
 }
 
@@ -538,18 +623,9 @@ bool getTimeFromRTC()
   time_t t = RTC.get();
   if (t > 0) 
   {
-    setTime(t);
-    return true;
-  } 
-  return false;
-}
-
-void getTimeFromRTCMenu()
-{
-  if (getTimeFromRTC()) 
-  {
     mySUI.println(F("DS1307 time retrieved."));
-    getTheTime();
+    setTime(t);
+    showTime();
     return;
   } 
 
