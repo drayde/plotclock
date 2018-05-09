@@ -70,11 +70,12 @@ Servo servoRight;  //
 volatile double lastX = 75;
 volatile double lastY = 47.5;
 
+int offsetX = 11;
+
 const int bottom = 19;
 const double top = 45;
 const double origSize = 20;
 const double scale = (top-bottom)/origSize;
-const int offsetX = -9;
 
 int last_min = 0;
 
@@ -152,13 +153,13 @@ void loop()
 
 void writeTime(int d1, int d2, int d3, int d4)
 {
-    number(offsetX+1, bottom, d1, scale);
-    number(offsetX+19, bottom, d2, scale);
+    number(offsetX-20+1, bottom, d1, scale);
+    number(offsetX-20+19, bottom, d2, scale);
     
-    number(offsetX+35, bottom, 11, scale);
+    number(offsetX-20+35, bottom, 11, scale);
 
-    number(offsetX+44, bottom, d3, scale);
-    number(offsetX+62, bottom, d4, scale);
+    number(offsetX-20+44, bottom, d3, scale);
+    number(offsetX-20+62, bottom, d4, scale);
 }
 
 void home()
@@ -418,6 +419,7 @@ void setupMenu()
   mainMenu->addCommand(SUI_STR("lf"), leftF, SUI_STR("set left factor"));
   mainMenu->addCommand(SUI_STR("r0"), right0, SUI_STR("set right zero"));
   mainMenu->addCommand(SUI_STR("rf"), rightF, SUI_STR("set right factor"));
+  mainMenu->addCommand(SUI_STR("off"), offset, SUI_STR("set x offset"));
   mainMenu->addCommand(SUI_STR("save"), saveParamsToEeprom, SUI_STR("save configuration to EEPROM"));
   mainMenu->addCommand(SUI_STR("read"), readParamsFromEeprom, SUI_STR("read configuration from EEPROM"));  
 #ifdef REALTIMECLOCK
@@ -429,6 +431,7 @@ void left0(){ setVar(&SERVOLEFTNULL); }
 void leftF(){ setVar(&SERVOFAKTORLEFT); }
 void right0(){ setVar(&SERVORIGHTNULL); }
 void rightF(){ setVar(&SERVOFAKTORRIGHT); }
+void offset(){ setVar(&offsetX); }
 
 void setVar(int* var)
 {
@@ -463,6 +466,8 @@ void showInfo()
   mySUI.println(SERVO_DELAY);
   mySUI.print(F("SERVO_DELAY_LONG:"));
   mySUI.println(SERVO_DELAY_LONG);
+  mySUI.print(F("offsetX:"));
+  mySUI.println(offsetX);
 }
 
 void setTheTime()
@@ -507,6 +512,7 @@ void saveParamsToEeprom()
   writeToEeprom(adr, SERVOFAKTORRIGHT);
   writeToEeprom(adr, SERVO_DELAY);
   writeToEeprom(adr, SERVO_DELAY_LONG);
+  writeToEeprom(adr, offsetX);
 }
 
 void readParamsFromEeprom()
@@ -518,6 +524,7 @@ void readParamsFromEeprom()
   readFromEeprom(adr, SERVOFAKTORRIGHT, 700);
   readFromEeprom(adr, SERVO_DELAY, 5);
   readFromEeprom(adr, SERVO_DELAY_LONG, 100);
+  readFromEeprom(adr, offsetX, 11);
 }
 
 void readFromEeprom(int& adr, int& param, int defaultValue)
