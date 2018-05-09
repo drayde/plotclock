@@ -127,7 +127,7 @@ void loop()
     if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
     if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
 
-    lift(1);    
+    setLed(false);    
     
     hour();
     while ((i+1)*10 <= hour())
@@ -164,14 +164,14 @@ void writeTime(int d1, int d2, int d3, int d4)
 
 void home()
 {
-    lift(1);
+    setLed(false);
     //drawTo(74.2, 47.5);
     drawTo(55, -4); // HOME
 }
 
 void testServo()
 {
-  lift(1);
+  setLed(false);
   if (!servoLeft.attached()) servoLeft.attach(SERVOPINLEFT);
   if (!servoRight.attached()) servoRight.attach(SERVOPINRIGHT);
 
@@ -209,87 +209,87 @@ void number(float bx, float by, int num, float scale) {
 
   case 0:
     drawTo(bx + 12 * scale, by + 6 * scale);
-    lift(0);
+    setLed(true);
     bogenGZS(bx + 7 * scale, by + 10 * scale, 10 * scale, -0.8, 6.7, 0.5);
-    lift(1);
+    setLed(false);
     break;
   case 1:
 
     drawTo(bx + 3 * scale, by + 15 * scale);
-    lift(0);
+    setLed(true);
     drawTo(bx + 10 * scale, by + 20 * scale);
     drawTo(bx + 10 * scale, by + 0 * scale);
-    lift(1);
+    setLed(false);
     break;
   case 2:
     drawTo(bx + 2 * scale, by + 12 * scale);
-    lift(0);
+    setLed(true);
     bogenUZS(bx + 8 * scale, by + 14 * scale, 6 * scale, 3, -0.8, 1);
     drawTo(bx + 1 * scale, by + 0 * scale);
     drawTo(bx + 12 * scale, by + 0 * scale);
-    lift(1);
+    setLed(false);
     break;
   case 3:
     drawTo(bx + 2 * scale, by + 17 * scale);
-    lift(0);
+    setLed(true);
     bogenUZS(bx + 5 * scale, by + 15 * scale, 5 * scale, 3, -2, 1);
     bogenUZS(bx + 5 * scale, by + 5 * scale, 5 * scale, 1.57, -3, 1);
-    lift(1);
+    setLed(false);
     break;
   case 4:
     drawTo(bx + 10 * scale, by + 0 * scale);
-    lift(0);
+    setLed(true);
     drawTo(bx + 10 * scale, by + 20 * scale);
     drawTo(bx + 2 * scale, by + 6 * scale);
     drawTo(bx + 12 * scale, by + 6 * scale);
-    lift(1);
+    setLed(false);
     break;
   case 5:
     drawTo(bx + 2 * scale, by + 5 * scale);
-    lift(0);
+    setLed(true);
     bogenGZS(bx + 5 * scale, by + 6 * scale, 6 * scale, -2.5, 2, 1);
     drawTo(bx + 5 * scale, by + 20 * scale);
     drawTo(bx + 12 * scale, by + 20 * scale);
-    lift(1);
+    setLed(false);
     break;
   case 6:
     drawTo(bx + 2 * scale, by + 10 * scale);
-    lift(0);
+    setLed(true);
     bogenUZS(bx + 7 * scale, by + 6 * scale, 6 * scale, 2, -4.4, 1);
     drawTo(bx + 11 * scale, by + 20 * scale);
-    lift(1);
+    setLed(false);
     break;
   case 7:
     drawTo(bx + 2 * scale, by + 20 * scale);
-    lift(0);
+    setLed(true);
     drawTo(bx + 12 * scale, by + 20 * scale);
     drawTo(bx + 2 * scale, by + 0);
-    lift(1);
+    setLed(false);
     break;
   case 8:
     drawTo(bx + 5 * scale, by + 10 * scale);
-    lift(0);
+    setLed(true);
     bogenUZS(bx + 5 * scale, by + 15 * scale, 5 * scale, 4.7, -1.6, 1);
     bogenGZS(bx + 5 * scale, by + 5 * scale, 5 * scale, -4.7, 2, 1);
-    lift(1);
+    setLed(false);
     break;
 
   case 9:
     drawTo(bx + 9 * scale, by + 11 * scale);
-    lift(0);
+    setLed(true);
     bogenUZS(bx + 7 * scale, by + 15 * scale, 5 * scale, 4, -0.5, 1);
     drawTo(bx + 5 * scale, by + 0);
-    lift(1);
+    setLed(false);
     break;
   case 11:
     drawTo(bx + 5 * scale, by + 15 * scale);
-    lift(0);
+    setLed(true);
     bogenGZS(bx + 5 * scale, by + 15 * scale, 0.1 * scale, 1, -1, 1);
-    lift(1);
+    setLed(false);
     drawTo(bx + 5 * scale, by + 5 * scale);
-    lift(0);
+    setLed(true);
     bogenGZS(bx + 5 * scale, by + 5 * scale, 0.1 * scale, 1, -1, 1);
-    lift(1);
+    setLed(false);
     break;
 
   }
@@ -297,20 +297,10 @@ void number(float bx, float by, int num, float scale) {
 
 
 
-void lift(char lift) {
-  switch (lift) {
-
-  case 0: 
-    delay(SERVO_DELAY_LONG);
-    digitalWrite(LED_PIN, HIGH); 
-    break;
-
-  case 1: 
-    delay(SERVO_DELAY_LONG);
-    digitalWrite(LED_PIN, LOW); 
-    break;
-
-  }
+void setLed(bool isOn) 
+{
+  delay(SERVO_DELAY_LONG);
+  digitalWrite(LED_PIN, isOn ? HIGH : LOW); 
 }
 
 
