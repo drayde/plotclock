@@ -15,7 +15,7 @@
 
 
 // delete or mark the next line as comment if you don't need these
-// #define REALTIMECLOCK    // enable real time clock
+#define REALTIMECLOCK    // enable real time clock
 
 
 
@@ -410,6 +410,7 @@ void setupMenu()
   SUI::Menu * mainMenu = mySUI.topLevelMenu();
   mainMenu->setName(SUI_STR("Main Menu"));
   mainMenu->addCommand(SUI_STR("set"), setTheTime, SUI_STR("sets the clock's time"));
+  mainMenu->addCommand(SUI_STR("show"), getTheTime, SUI_STR("show the clock's time"));
   mainMenu->addCommand(SUI_STR("t"), write0000, SUI_STR("test - write 00:00"));
   mainMenu->addCommand(SUI_STR("c"), testServo, SUI_STR("calibration movement"));
   mainMenu->addCommand(SUI_STR("i"), showInfo, SUI_STR("info - show current settings"));
@@ -489,6 +490,14 @@ void setTheTime()
   mySUI.returnError();
 }
 
+void getTheTime()
+{
+  mySUI.print(F("hours: "));
+  mySUI.println(hour());
+  mySUI.print(F("minutes: "));
+  mySUI.println(minute());  
+}
+
 void saveParamsToEeprom()
 {
   int adr = 0;
@@ -529,10 +538,10 @@ void writeToEeprom(int& adr, int param)
 
 bool getTimeFromRTC()
 {
-  tmElements_t tm;
-  if (RTC.read(tm)) 
+  time_t t = RTC.get();
+  if (t > 0) 
   {
-    setTime(tm.Hour,tm.Minute,tm.Second,tm.Day,tm.Month,tm.Year);
+    setTime(t);
     return true;
   } 
   return false;
@@ -542,7 +551,8 @@ void getTimeFromRTCMenu()
 {
   if (getTimeFromRTC()) 
   {
-    mySUI.println(F("DS1307 time is set OK."));
+    mySUI.println(F("DS1307 time retrieved."));
+    getTheTime();
     return;
   } 
 
